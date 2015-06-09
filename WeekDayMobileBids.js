@@ -1,5 +1,5 @@
 /*
-author: fabio@momondo.com
+author: FKrauss
 
 Inputs for mobile bids based on weekday
 */
