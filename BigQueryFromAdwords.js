@@ -4,7 +4,7 @@ I still need to tidy this up. It's cluttered and not working in the last stage (
 
 function main() {
   
-  var projectid = "fluted-current-91116";
+  var projectid = "";
   var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
   var tablename = "Brazil_Flights";
   var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0";
