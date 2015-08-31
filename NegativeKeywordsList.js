@@ -18,15 +18,14 @@ function main() {
   var lastRow = sheet.getLastRow();
   var data = sheet.getRange(2,1,lastRow-1,1).getValues();
   Logger.log(data);
-  sendGAMP('UA-61367979-1', 'Adwords');
   var campaignIterator = AdWordsApp.campaigns().withCondition("Status = ENABLED").get();
 
    // while there is another campaign on the line, it runs the function
-while (campaignIterator.hasNext()) {  
+while (campaignIterator.hasNext()) {
   var currentcampaign = campaignIterator.next();
   
-  // if the campaign name contains what you asked to filter, it does nothing to it 
-  // and jumps to the next campaign 
+  // if the campaign name contains what you asked to filter, it does nothing to it
+  // and jumps to the next campaign
   
   if (currentcampaign.getName().indexOf(excludeCampaignIfcontains) > -1)
   
@@ -36,12 +35,12 @@ while (campaignIterator.hasNext()) {
   
   else {
      Logger.log(currentcampaign.getName() + ' started');
-     // this for loop iterates all the Negative Keywords in the list, 
+     // this for loop iterates all the Negative Keywords in the list,
      // adding them to the current selected campaign
      for (i = 0 ; i <= lastRow-2; i++){
      var kw = String(data[i]);
      var negkw = kw.substring(0, kw.length);
-     // if you want to fork this, keep in mind that you need to cast the data[i] as a string for the method to work 
+     // if you want to fork this, keep in mind that you need to cast the data[i] as a string for the method to work
      currentcampaign.createNegativeKeyword(negkw);
      Logger.log(negkw);
      }
@@ -51,3 +50,4 @@ while (campaignIterator.hasNext()) {
    } //else closing
   } // while closing
 } //main closing
+
