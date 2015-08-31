@@ -4,7 +4,7 @@ Author: FKrauss
 
 function main() {
   var yourEMAIL = '';
-  var spreadsheet = SpreadsheetApp.openById('1EUG9el8OI2AErjdLD4t6JaVl-Czk9q7h3VayDaqAnmU');
+  var spreadsheet = SpreadsheetApp.openById('1UDAqxFGqMlanTeQnD4W01xnDp4mcLmaDLnKEfJdXWRg');
   var spreadsheetlink = spreadsheet.getUrl();
   var report = AdWordsApp.report(
     // for field and schema reference, check https://developers.google.com/adwords/api/docs/appendix/reports#campaign
