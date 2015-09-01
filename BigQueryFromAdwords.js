@@ -1,74 +1,30 @@
-/*
-I still need to tidy this up. It's cluttered and not working in the last stage (the import phase)
-*/
-
-function main() {
+function main(){
   
-  var projectid = "";
+  // BQ credentials
+  var country = "Brazil" //what's the name of your country?
+  var projectid = "fluted-current-91116";
   var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
-  var tablename = "Brazil_Flights";
+  var tablename = country+"_All_Accounts";
   var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0";
 
+   //  createDataSet("fluted-current-91116","CAMPAIGN_PERFORMANCE_REPORT");
+   //  createTable(projectid,datasetid,sandboxsheetURL,tablename);
+ 
+  
+ var accountSelector = MccApp.accounts()
+    .withCondition("Name CONTAINS '"+country+"'")
+
+ var accountIterator = accountSelector.get();
+ while (accountIterator.hasNext()) {
+   var account = accountIterator.next();
+   MccApp.select(account)
+
+   importData(projectid,datasetid,tablename);
    
-//  createDataSet("fluted-current-91116","CAMPAIGN_PERFORMANCE_REPORT"); //use this only once!
-//  createTable(projectid,datasetid,sandboxsheetURL,tablename);
-  importData(projectid,datasetid,tablename,sandboxsheetURL);
+   Logger.log("finished with " + AdWordsApp.currentAccount().getCustomerId());
+ }
   
   
-}
-
-
-
-function importData(INSERT_PROJECT_ID_HERE,INSERT_DATASET_NAME_HERE,INSERT_TABLE_NAME_HERE,sandbox){ // WORK IN PROGRESS!!!
-  // To get your project ID, open the Advanced APIs dialog, click the
-  // "Google Developers Console" and select the project number from the
-  // Overview page.
-
-  var projectId = INSERT_PROJECT_ID_HERE;
-  var dataSetId = INSERT_DATASET_NAME_HERE;
-  var tableId = INSERT_TABLE_NAME_HERE;
-  var sizeoftable = SpreadsheetApp.openByUrl(sandbox).getSheetByName("data").getLastColumn();
-  var numofrows = SpreadsheetApp.openByUrl(sandbox).getSheetByName("data").getLastRow();
-  var headers = SpreadsheetApp.openByUrl(sandbox).getSheetByName("data").getRange(1,1,1,sizeoftable).getValues();
-  headers = headers[0];
-  var insertAllRequest = BigQuery.newTableDataInsertAllRequest();
-  insertAllRequest.rows = [];
-  
- for (var i = 2; i <= numofrows; i++){
-   var newrow = BigQuery.newTableDataInsertAllRequestRows();
-   var values = SpreadsheetApp.openByUrl(sandbox).getSheetByName("data").getRange(i,1,2,sizeoftable).getValues();
-   values = values[0];
-   newrow.insertId = i-1;
-   var datapoints = [];
-   var myobject = {}
-   for (var y = 1; y <= sizeoftable; y++){ 
-     var newpair = headers[y-1];
-     myobject[newpair] = values[y-1];
-   }
-
-   newrow.json = JSON.stringify(myobject);
-   insertAllRequest.rows.push(newrow);
-
-  }     
-  
-  Logger.log(insertAllRequest.rows);
-  BigQuery.Tabledata.insertAll(insertAllRequest, projectId, dataSetId, tableId);
-  Logger.log(projectId + "."+dataSetId+"."+tableId);
-  Logger.log('Data inserted.');
-}
-
-function getreport(){ // WORK IN PROGRESS!!!
-
-  /*  var report = AdWordsApp.report(
-    'SELECT CampaignName, Date, DayOfWeek, Week, MonthOfYear, Year, '+
-    'Slot, ClickType, ' +
-    'Device, Impressions, Clicks, ' +
-    'Cost, Amount, ConvertedClicks, ConversionsManyPerClick, ConversionValue '+
-    'FROM CAMPAIGN_PERFORMANCE_REPORT ' +
-    'WHERE Cost > 0 ' + // this filter is here just to prevent zeroes from showing and eating up the 10k row limit
-    'DURING LAST_30_DAYS'); */
-
-
 }
 
 
@@ -83,7 +39,7 @@ function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) { // DONE!
 
   var dataSet = BigQuery.newDataset();
   dataSet.id = dataSetId;
-  dataSet.friendlyName = 'CAMPAIGN_PERFORMANCE_REPORT_Test1';
+  dataSet.friendlyName = 'CAMPAIGN_PERFORMANCE_REPORT';
   dataSet.datasetReference = BigQuery.newDatasetReference();
   dataSet.datasetReference.projectId = projectId;
   dataSet.datasetReference.datasetId = dataSetId;
@@ -98,7 +54,7 @@ function createTable(INSERT_PROJECT_ID_HERE,INSERT_DATASET_NAME_HERE,sandbox,INS
   // "Google Developers Console" and select the project number from the
   // Overview page.
 var sheet = SpreadsheetApp.openByUrl(sandbox).getSheetByName("schema");
-var sheetLastCol = sheet.getLastColumn(); 
+var sheetLastCol = sheet.getLastColumn();
 var projectId = INSERT_PROJECT_ID_HERE;
 var dataSetId = INSERT_DATASET_NAME_HERE;
 var tableId = INSERT_TABLE_NAME_HERE;
@@ -107,7 +63,7 @@ var schema = BigQuery.newTableSchema();
 var allfields = [];
   
  for (var i = 2; i <= sheetLastCol; i++){
- //for (var i = sheetLastCol; i >= 1; i--){ 
+ //for (var i = sheetLastCol; i >= 1; i--){
     /* starts at 2 because "i" selects the columns and they start at 1, while 1 is the name*/
     var values = sheet.getRange(1,i,3,1).getValues();
     var field = {description: values[2],
@@ -115,7 +71,7 @@ var allfields = [];
                 type: values[1]};
    allfields.push(field);
 
-  }   
+  }
   Logger.log(allfields);
 
   schema.fields = allfields;
@@ -132,4 +88,84 @@ var allfields = [];
 
   Logger.log('Data table with ID = %s, Name = %s created.',
       table.id, table.friendlyName);
+}
+
+
+function importData(projectid,datasetid,tablename) {
+  
+    var date_range = 'LAST_30_DAYS';
+//    var date_range = 'YESTERDAY';
+  var columns = ['Date',
+                 'DayOfWeek',
+                 'AccountDescriptiveName',
+                 'CampaignName',
+                 'CampaignId',
+                 'Slot',
+                 'ClickType',
+                 'Device',
+                 'Impressions',
+                 'Clicks',
+                 'Cost',
+                 'AveragePosition',
+                 'ConvertedClicks',
+                 'ConversionsManyPerClick',
+                 'ConversionValue'];
+  var columns_str = columns.join(', ');
+  var accountid = AdWordsApp.currentAccount().getCustomerId();
+  
+  var report = AdWordsApp.report(
+    'SELECT ' + columns_str + " " +
+    'FROM CAMPAIGN_PERFORMANCE_REPORT ' +
+    'DURING ' +date_range);
+    var csv = columns_str;
+    var rows = report.rows();
+     while (rows.hasNext()) {
+      var row = rows.next()
+      
+      var Date = row[columns[0]] + " 00:00";
+      var DayOfWeek = row[columns[1]];
+      var AccountDescriptiveName = row[columns[2]];
+      var CampaignName = row[columns[3]];
+      var CampaignId = row[columns[4]];
+      var Slot = row[columns[5]];
+      var ClickType = row[columns[6]];
+      var Device = row[columns[7]];
+      var Impressions = row[columns[8]];
+      var Clicks = row[columns[9]];
+      var Cost = row[columns[10]];
+      var AveragePosition = row[columns[11]];
+      var ConvertedClicks = row[columns[12]];
+      var ConversionsManyPerClick = row[columns[13]];
+      var ConversionValue = row[columns[14]];
+ 
+    csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','  //add the account id to the schema
+    + AccountDescriptiveName + ',' + CampaignName + ',' + CampaignId + ','
+    + Slot + ',' + ClickType + ',' + Device + ',' + Impressions + ',' + Clicks
+    + ',' + Cost + ',' + AveragePosition + ',' + ConvertedClicks
+    + ',' + ConversionsManyPerClick + ',' + ConversionValue;
+  };
+  var fileid = DriveApp.createFile(AccountDescriptiveName ,csv, MimeType.CSV).getId();
+  
+  // Load CSV and convert to the correct format for upload.
+  var file = DriveApp.getFileById(fileid);
+var data = file.getBlob().setContentType('application/octet-stream');
+
+  // Create the data upload job.
+  var job = {
+    configuration: {
+      load: {
+        destinationTable: {
+          projectId: projectid,
+          datasetId: datasetid,
+          tableId: tablename
+        },
+        skipLeadingRows: 1
+      }
+    }
+  };
+  job = BigQuery.Jobs.insert(job, projectid, data);
+  Logger.log('Load job started. Check on the status of it here: ' +
+      'https://bigquery.cloud.google.com/jobs/%s', projectid);
+  file.setTrashed(true);
+  
 }
