@@ -1,13 +1,17 @@
 function main(){
   
   // BQ credentials
-  var country = "Brazil" //what's the name of your country?
-  var projectid = "fluted-current-91116";
+  var country = "" //what's the name of your country? or, any other filter you may use... in my case country was the way to filter accounts
+  var projectid = ""; // your project ID, not the number, the string
   var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
   var tablename = country+"_All_Accounts";
-  var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0";
+  var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0"; // just make a copy of this sheet and write the schema of the table as you please. It works for creating ther tables not related to adwords though. Keep the sheet's name
 
-   //  createDataSet("fluted-current-91116","CAMPAIGN_PERFORMANCE_REPORT");
+
+ // this is the switch. First time, you create the dataset and tables, then you comment it
+ // and finally, comment both of these and leave only the importData function uncommented to keep uploading your data to BQ
+
+   //  createDataSet(projectid,datasetid);
    //  createTable(projectid,datasetid,sandboxsheetURL,tablename);
  
   
@@ -18,6 +22,7 @@ function main(){
  while (accountIterator.hasNext()) {
    var account = accountIterator.next();
    MccApp.select(account)
+// comment importData when running the setup functions
 
    importData(projectid,datasetid,tablename);
    
@@ -28,10 +33,9 @@ function main(){
 }
 
 
-function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) { // DONE!
-  // To get your project ID, open the Advanced APIs dialog, click the
-  // "Google Developers Console" and select the project number from the
-  // Overview page.
+function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) {
+  // To get your project ID, open the Advanced APIs dialog,
+  // tick BigQuery AND click the "Google Developers Console" link to enable the API
 
   var projectId = INSERT_PROJECT_ID_HERE; //the ID is not a number! it is the string ID of the project
 
@@ -39,7 +43,7 @@ function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) { // DONE!
 
   var dataSet = BigQuery.newDataset();
   dataSet.id = dataSetId;
-  dataSet.friendlyName = 'CAMPAIGN_PERFORMANCE_REPORT';
+  dataSet.friendlyName = dataSetId;
   dataSet.datasetReference = BigQuery.newDatasetReference();
   dataSet.datasetReference.projectId = projectId;
   dataSet.datasetReference.datasetId = dataSetId;
@@ -49,10 +53,10 @@ function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) { // DONE!
       dataSet.friendlyName);
 }
 
-function createTable(INSERT_PROJECT_ID_HERE,INSERT_DATASET_NAME_HERE,sandbox,INSERT_TABLE_NAME_HERE) { // DONE!!
-  // To get your project ID, open the Advanced APIs dialog, click the
-  // "Google Developers Console" and select the project number from the
-  // Overview page.
+function createTable(INSERT_PROJECT_ID_HERE,INSERT_DATASET_NAME_HERE,sandbox,INSERT_TABLE_NAME_HERE) {
+  // To get your project ID, open the Advanced APIs dialog,
+  // tick BigQuery AND click the "Google Developers Console" link to enable the API
+  
 var sheet = SpreadsheetApp.openByUrl(sandbox).getSheetByName("schema");
 var sheetLastCol = sheet.getLastColumn();
 var projectId = INSERT_PROJECT_ID_HERE;
@@ -92,7 +96,9 @@ var allfields = [];
 
 
 function importData(projectid,datasetid,tablename) {
-  
+// here you may have a different schema. Make sure it's the same on the spreadsheet
+
+//switch the date ranges, I suggest using YESTERDAY to test
     var date_range = 'LAST_30_DAYS';
 //    var date_range = 'YESTERDAY';
   var columns = ['Date',
@@ -121,7 +127,8 @@ function importData(projectid,datasetid,tablename) {
     var rows = report.rows();
      while (rows.hasNext()) {
       var row = rows.next()
-      
+// I wrote a way to create the csv programmatically according to the output
+// but it didn't work. Manually is good enough for now.
       var Date = row[columns[0]] + " 00:00";
       var DayOfWeek = row[columns[1]];
       var AccountDescriptiveName = row[columns[2]];
@@ -138,7 +145,7 @@ function importData(projectid,datasetid,tablename) {
       var ConversionsManyPerClick = row[columns[13]];
       var ConversionValue = row[columns[14]];
  
-    csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','  //add the account id to the schema
+    csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','
     + AccountDescriptiveName + ',' + CampaignName + ',' + CampaignId + ','
     + Slot + ',' + ClickType + ',' + Device + ',' + Impressions + ',' + Clicks
     + ',' + Cost + ',' + AveragePosition + ',' + ConvertedClicks
@@ -166,6 +173,9 @@ var data = file.getBlob().setContentType('application/octet-stream');
   job = BigQuery.Jobs.insert(job, projectid, data);
   Logger.log('Load job started. Check on the status of it here: ' +
       'https://bigquery.cloud.google.com/jobs/%s', projectid);
+  // Erase the csv file from Gdrive
+  // so it doesn't count against your drive storage after uploading
+  // it stays in the trash for 30 days though
   file.setTrashed(true);
   
 }
