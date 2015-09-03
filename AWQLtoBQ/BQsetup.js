@@ -1,7 +1,19 @@
+/*
+author: FKrauss
+note: you can comment and uncomment the lines depending on when you run the script
+
+Schedule it to run Daily in order to have a day to day data dump, and make sure you're not exceeding the limits of daily data pushes to BQ
+
+
+
+*/
+
+
+
 function main(){
 
   // BQ credentials
-  var projectid = "PUT YOUR ID HERE!!!!";
+  var projectid = "Put your ID here!!";
   var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
   var tablename = "Adwords_All_Accounts_"+daystamp();
   var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0";
@@ -13,6 +25,7 @@ function main(){
   
  var accountSelector = MccApp.accounts().forDateRange("YESTERDAY")
                        .withCondition("Clicks > 1");
+               //       .withIds(['846-084-5661']); // use this line to query specific accounts if they fail
 
  var accountIterator = accountSelector.get();
  while (accountIterator.hasNext()) {
@@ -111,11 +124,11 @@ function importData(projectid,datasetid,tablename) {
                  'ConvertedClicks',
                  'ConversionsManyPerClick',
                  'ConversionValue'];
-  var columns_str = columns.join(', ');
+  var columns_str = "Date,accountid,DayOfWeek,AccountDescriptiveName,CampaignName,CampaignId,Slot,ClickType,Device,Impressions,Clicks,Cost,AveragePosition,ConvertedClicks,ConversionsManyPerClick,ConversionValue"
   var accountid = AdWordsApp.currentAccount().getCustomerId();
   
   var report = AdWordsApp.report(
-    'SELECT ' + columns_str + " " +
+    'SELECT ' + columns.join(",") + " " +
     'FROM CAMPAIGN_PERFORMANCE_REPORT ' +
     'DURING ' +date_range);
     var csv = columns_str;
@@ -131,13 +144,13 @@ function importData(projectid,datasetid,tablename) {
       var Slot = row[columns[5]];
       var ClickType = row[columns[6]];
       var Device = row[columns[7]];
-      var Impressions = row[columns[8]];
-      var Clicks = row[columns[9]];
-      var Cost = row[columns[10]];
-      var AveragePosition = row[columns[11]];
-      var ConvertedClicks = row[columns[12]];
-      var ConversionsManyPerClick = row[columns[13]];
-      var ConversionValue = row[columns[14]];
+      var Impressions = row[columns[8]].replace(",","");
+      var Clicks = row[columns[9]].replace(",","");
+      var Cost = row[columns[10]].replace(",","");
+      var AveragePosition = row[columns[11]].replace(",","");
+      var ConvertedClicks = row[columns[12]].replace(",","");
+      var ConversionsManyPerClick = row[columns[13]].replace(",","");
+      var ConversionValue = row[columns[14]].replace(",","");
  
     csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','  //add the account id to the schema
     + AccountDescriptiveName + ',' + CampaignName + ',' + CampaignId + ','
@@ -165,9 +178,11 @@ var data = file.getBlob().setContentType('application/octet-stream');
     }
   };
   job = BigQuery.Jobs.insert(job, projectid, data);
-  Logger.log('Load job started. Check on the status of it here: ' +
-      'https://bigquery.cloud.google.com/jobs/%s', projectid);
-  file.setTrashed(true);
+  var jobid = job.id
+  
+Logger.log("finished with " + AdWordsApp.currentAccount().getCustomerId() +
+  " - " + AdWordsApp.currentAccount().getName() +"with jobid =" +jobid);
+     file.setTrashed(true);
   
 }
 
