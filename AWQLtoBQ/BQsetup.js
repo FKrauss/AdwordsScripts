@@ -12,7 +12,7 @@ Schedule it to run Daily in order to have a day to day data dump, and make sure 
 function main(){
 
   // BQ credentials
-  var projectid = "fabiok-umpalumpa-momondo";
+  var projectid = "YOUR PROJECT ID!!!";
   var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
   var tablename = "Adwords_All_Accounts_"+daystamp();
   var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0"; // make a copy of this one and use it to create the tables. try to have one per table, this way you can also have an organized way os storiing the schemas
