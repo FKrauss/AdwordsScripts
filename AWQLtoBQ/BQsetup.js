@@ -180,15 +180,18 @@ var data = file.getBlob().setContentType('application/octet-stream');
 }
 
 
-function daystamp() {
+function daystamp(tim) {
     var today = new Date();
-var dd = today.getDate()-1; //so it gives you the date corresponding to the data, yesterday
+   today.setDate(today.getDate()-tim);
+   
+var dd = today.getDate(); //so it gives you the date corresponding to the data, yesterday in PDT
 var mm = today.getMonth()+1; //January is 0!
 var yyyy = today.getFullYear();
 
 if(dd<10) {dd='0'+dd} if(mm<10) {mm='0'+mm}
 
-return today = yyyy+mm+dd;
+return today = String(yyyy)+String(mm)+String(dd);
 }
+
 
 
