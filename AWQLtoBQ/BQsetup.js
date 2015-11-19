@@ -2,106 +2,64 @@
 author: FKrauss
 note: you can comment and uncomment the lines depending on when you run the script
 
-Schedule it to run Daily in order to have a day to day data dump, and make sure you're not exceeding the limits of daily data pushes to BQ
-
-
+This script was designed to make sure ALL the accounts are uploaded to BigQuery.
+Put it to run hourly and you shouldn't have problems
 
 */
+
+var projectidnum = "YOUR_PROJECT_NUMBER"; //found on the cloud.google.com console for the project
+var projectid = "String_PROJECT_ID"; //also in the cloud.google.com console
+var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
+var tablehandle = "Adwords_All_Accounts_"
+var daterange = daystamp(1);
+//var daterange = "20151111";
+var tablename = tablehandle + daterange;
+var sandboxsheetURL = "SPREADSHEET_WITH_SCHEMA"; //it is used to create the daily table. this is how it looks like: 
+// https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0
 
 
 function main(){
 
-  // BQ credentials
-  var projectid = "YOUR PROJECT ID!!!";
-  var datasetid = "CAMPAIGN_PERFORMANCE_REPORT";
-  var tablename = "Adwords_All_Accounts_"+daystamp();
-  var sandboxsheetURL = "https://docs.google.com/spreadsheets/d/1LHsZkozg3Sg35hgoH2W4kk9VcK-eHu7gAA9CifZlIGo/edit#gid=0"; // make a copy of this one and use it to create the tables. try to have one per table, this way you can also have an organized way os storiing the schemas
-  Logger.log(tablename);
-  var jobstable = []; // this collects the account names and JobbIDs, so if you have any uploading issues on the jobs you can find which account went wrong
-  
-   //  createDataSet(projectid,datasetid); // if you didn't create the dataset yet, uncomment this
-     createTable(projectid,datasetid,sandboxsheetURL,tablename); // I set it to run every day, so I create daily tables, like GA premium does
- 
-  
- var accountSelector = MccApp.accounts().forDateRange("YESTERDAY")
-                       .withCondition("Clicks > 1") // I use this filter to prevet the script from wasting time on emepty accounts. If you have many
-                       .orderBy("Cost DESC"); // order it to make sure you get the ones that cost you more in there for sure
-               //       .withIds(['xxx-xxx-xxxx']); // use this line to query specific accounts if they fail
+  try{createTable(tablename);}
+  catch(e){Logger.log(e.message)}
+
+  try{var accounts = getprocessedAccounts();}
+  catch(e){ // if the table doesn't exist, it will throw an error, thus you need to create an empty array to be evaluated against
+    var accounts = [];
+    Logger.log(e.message)}
+
+var accountSelector = MccApp.accounts()
+                      .forDateRange(daterange,daterange) //use this one for specific dates
+                      .withCondition("Impressions > 0")
+                      .orderBy("Cost DESC");
 
  var accountIterator = accountSelector.get();
    while (accountIterator.hasNext()) {
     var account = accountIterator.next();
      MccApp.select(account);
-      importData(projectid,datasetid,tablename);
+     if (accounts.indexOf(AdWordsApp.currentAccount().getCustomerId()) <= -1){
+       importData(tablename); }
    }
-Logger.log(jobstable);
+  
 }
 
 
-function createDataSet(INSERT_PROJECT_ID_HERE,INSERT_DATASET_ID_HERE) { // DONE!
-  // To get your project ID, open the Advanced APIs dialog, click the
-  // "Google Developers Console" and select the project number from the
-  // Overview page.
+function daystamp(tim) {
+    var today = new Date();
+   today.setDate(today.getDate()-tim);
+   
+var dd = today.getDate(); //so it gives you the day
+var mm = today.getMonth()+1; //January is 0!
+var yyyy = today.getFullYear();
 
-  var projectId = INSERT_PROJECT_ID_HERE; //the ID is not a number! it is the string ID of the project
+if(dd<10) {dd='0'+dd} if(mm<10) {mm='0'+mm}
 
-  var dataSetId = INSERT_DATASET_ID_HERE;
-
-  var dataSet = BigQuery.newDataset();
-  dataSet.id = dataSetId;
-  dataSet.friendlyName = dataSetId;
-  dataSet.datasetReference = BigQuery.newDatasetReference();
-  dataSet.datasetReference.projectId = projectId;
-  dataSet.datasetReference.datasetId = dataSetId;
-
-  dataSet = BigQuery.Datasets.insert(dataSet, projectId);
-  Logger.log('Data set with ID = %s, Name = %s created.', dataSet.id,
-      dataSet.friendlyName);
+return today = String(yyyy)+String(mm)+String(dd);
 }
 
-function createTable(INSERT_PROJECT_ID_HERE,INSERT_DATASET_NAME_HERE,sandbox,INSERT_TABLE_NAME_HERE) { // DONE!!
-  // To get your project ID, open the Advanced APIs dialog, click the
-  // "Google Developers Console" and select the project number from the
-  // Overview page.
-var sheet = SpreadsheetApp.openByUrl(sandbox).getSheetByName("schema");
-var sheetLastCol = sheet.getLastColumn();
-var projectId = INSERT_PROJECT_ID_HERE;
-var dataSetId = INSERT_DATASET_NAME_HERE;
-var tableId = INSERT_TABLE_NAME_HERE;
-var table = BigQuery.newTable();
-var schema = BigQuery.newTableSchema();
-var allfields = [];
- for (var i = 2; i <= sheetLastCol; i++){
- //for (var i = sheetLastCol; i >= 1; i--){
-    /* starts at 2 because "i" selects the columns and they start at 1, while 1 is the name*/
-    var values = sheet.getRange(1,i,3,1).getValues();
-    var field = {description: values[2],
-                name: values[0],
-                type: values[1]};
-   allfields.push(field);
-
-  }
-  schema.fields = allfields;
-  table.schema = schema;
-  table.id = tableId;
-  table.friendlyName = "friendly name of the adwords"; // just come up with your friendly name for the table
-  table.tableReference = BigQuery.newTableReference();
-  table.tableReference.datasetId = dataSetId;
-  table.tableReference.projectId = projectId;
-  table.tableReference.tableId = tableId;
-  table = BigQuery.Tables.insert(table, projectId, dataSetId);
-  Logger.log('Data table with ID = %s, Name = %s created.', table.id, table.friendlyName);
-}
-
-
-function importData(projectid,datasetid,tablename) {
-
-// I worked on making this function dynamic, but since you're setting up something that is not supposed
-// to be changing all the time, I figured it would be best to leave it hardcoded
-// This way you can easily troubleshoot and it's easier to keep everything clear and transparent
-
-//    var date_range = 'LAST_30_DAYS';
-    var date_range = 'YESTERDAY';
+function importData(tablename_) {
+  
+  var date_range =  daterange +','+ daterange;
   var columns = ['Date',
                  'DayOfWeek',
                  'AccountDescriptiveName',
@@ -115,11 +73,10 @@ function importData(projectid,datasetid,tablename) {
                  'Cost',
                  'AveragePosition',
                  'ConvertedClicks',
-                 'ConversionsManyPerClick',
+                 'Conversions',
                  'ConversionValue'];
-  var columns_str = "Date,accountid,DayOfWeek,AccountDescriptiveName,CampaignName,CampaignId,Slot,ClickType,Device,Impressions,Clicks,Cost,AveragePosition,ConvertedClicks,ConversionsManyPerClick,ConversionValue";
+  var columns_str = "Date,accountid,DayOfWeek,AccountDescriptiveName,CampaignName,CampaignId,Slot,ClickType,Device,Impressions,Clicks,Cost,AveragePosition,ConvertedClicks,ConversionsManyPerClick,ConversionValue"
   var accountid = AdWordsApp.currentAccount().getCustomerId();
-  
   var report = AdWordsApp.report(
     'SELECT ' + columns.join(",") + " " +
     'FROM CAMPAIGN_PERFORMANCE_REPORT ' +
@@ -127,13 +84,11 @@ function importData(projectid,datasetid,tablename) {
     var csv = columns_str;
     var rows = report.rows();
      while (rows.hasNext()) {
-      var row = rows.next()
-// I did find some instances where adwords adds a mille separator and that just screws up all the uploads
-// make sure you add the replace function in every field that will be numerical
+      var row = rows.next();
       var Date = row[columns[0]] + " 00:00";
       var DayOfWeek = row[columns[1]];
-      var AccountDescriptiveName = row[columns[2]];
-      var CampaignName = row[columns[3]];
+      var AccountDescriptiveName = row[columns[2]].replace(/,/g);
+      var CampaignName = row[columns[3]].replace(/,/g);
       var CampaignId = row[columns[4]];
       var Slot = row[columns[5]];
       var ClickType = row[columns[6]];
@@ -144,18 +99,17 @@ function importData(projectid,datasetid,tablename) {
       var AveragePosition = row[columns[11]].replace(",","");
       var ConvertedClicks = row[columns[12]].replace(",","");
       var ConversionsManyPerClick = row[columns[13]].replace(",","");
-      var ConversionValue = row[columns[14]].replace(",","");
- 
-    csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','  //add the account id to the schema
+      var ConversionValue = row[columns[14]].replace(",",""); 
+    csv += '\n' + Date + ',' + accountid + ',' + DayOfWeek + ','
     + AccountDescriptiveName + ',' + CampaignName + ',' + CampaignId + ','
     + Slot + ',' + ClickType + ',' + Device + ',' + Impressions + ',' + Clicks
     + ',' + Cost + ',' + AveragePosition + ',' + ConvertedClicks
     + ',' + ConversionsManyPerClick + ',' + ConversionValue;
-  };
-var fileid = DriveApp.createFile(AccountDescriptiveName ,csv, MimeType.CSV).getId();
+  }; //while close
   
-  // Load CSV and convert to the correct format for upload.
-  var file = DriveApp.getFileById(fileid);
+    // Load CSV and convert to the correct format for upload.
+var fileid = DriveApp.createFile(AccountDescriptiveName ,csv, MimeType.CSV).getId();
+var file = DriveApp.getFileById(fileid);
 var data = file.getBlob().setContentType('application/octet-stream');
 
   // Create the data upload job.
@@ -165,33 +119,65 @@ var data = file.getBlob().setContentType('application/octet-stream');
         destinationTable: {
           projectId: projectid,
           datasetId: datasetid,
-          tableId: tablename
+          tableId: tablename_
         },
         skipLeadingRows: 1
       }
     }
   };
   job = BigQuery.Jobs.insert(job, projectid, data);
-  var jobid = job.id
+  var jobid = job.id;
+  Logger.log(jobid +" from account "+ AdWordsApp.currentAccount().getName());
+
+
+  file.setTrashed(true); 
+}
+
+function getprocessedAccounts(){
   
-  jobstable.push([jobid, AdWordsApp.currentAccount().getName()])
-  // trash the file so it doesn't eat up your Gdrive storage
-     file.setTrashed(true);
+var fullTableName = projectidnum + ':' + datasetid + '.' + tablename;
+  var queryRequest = BigQuery.newQueryRequest();
+  queryRequest.query = 'select accountid from ' + fullTableName + ' group by 1';
+  var query = BigQuery.Jobs.query(queryRequest, projectidnum);
+
+  if (query.jobComplete) {
+    var values = [];
+    for (var i = 0; i < query.rows.length; i++) {
+      var row = query.rows[i];
+      
+      for (var j = 0; j < row.f.length; j++) {
+        values.push(row.f[j].v);
+      }
+      
+    }
+  }
+return values
+
 }
 
-
-function daystamp(tim) {
-    var today = new Date();
-   today.setDate(today.getDate()-tim);
-   
-var dd = today.getDate(); //so it gives you the date corresponding to the data, yesterday in PDT
-var mm = today.getMonth()+1; //January is 0!
-var yyyy = today.getFullYear();
-
-if(dd<10) {dd='0'+dd} if(mm<10) {mm='0'+mm}
-
-return today = String(yyyy)+String(mm)+String(dd);
+function createTable(INSERT_TABLE_NAME_HERE) { 
+var sheet = SpreadsheetApp.openByUrl(sandboxsheetURL).getSheetByName("schema");
+var sheetLastCol = sheet.getLastColumn();
+var table = BigQuery.newTable();
+var schema = BigQuery.newTableSchema();
+var allfields = [];
+ for (var i = 2; i <= sheetLastCol; i++){
+    /* starts at 2 because "i" selects the columns and they start at 1, while 1 is the name*/
+    var values = sheet.getRange(1,i,3,1).getValues();
+    var field = {description: values[2],
+                name: values[0],
+                type: values[1]};
+   allfields.push(field);
+  }
+  schema.fields = allfields;
+  table.schema = schema;
+  table.id = INSERT_TABLE_NAME_HERE;
+  table.friendlyName = "Adwords Campaign Performance Data";
+  table.tableReference = BigQuery.newTableReference();
+  table.tableReference.datasetId = datasetid;
+  table.tableReference.projectId = projectid;
+  table.tableReference.tableId = INSERT_TABLE_NAME_HERE;
+  table = BigQuery.Tables.insert(table, projectid, datasetid);
 }
-
 
 
