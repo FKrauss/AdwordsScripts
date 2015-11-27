@@ -1,10 +1,13 @@
 /*
 Author: FKrauss
+
+example spreadsheet can be found here: https://docs.google.com/spreadsheets/d/1DOjJ1VZYQ2huoOLw1oUr3quTPez15P6H8p6SueVjcH8/edit#gid=1664534065&vpid=A1
+make a copy, get the spreadsheet URL and have fun ;)
 */
 
 function main() {
   var yourEMAIL = '';
-  var spreadsheet = SpreadsheetApp.openById('1UDAqxFGqMlanTeQnD4W01xnDp4mcLmaDLnKEfJdXWRg');
+  var spreadsheet = SpreadsheetApp.openById('1DOjJ1VZYQ2huoOLw1oUr3quTPez15P6H8p6SueVjcH8');
   var spreadsheetlink = spreadsheet.getUrl();
   var report = AdWordsApp.report(
     // for field and schema reference, check https://developers.google.com/adwords/api/docs/appendix/reports#campaign
