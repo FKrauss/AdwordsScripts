@@ -15,7 +15,7 @@ function main() {
     'SELECT CampaignName, Date, DayOfWeek, Week, MonthOfYear, Year, '+
     'Slot, ClickType, ' +
     'Device, Impressions, Clicks, ' +
-    'Cost, Amount, ConvertedClicks, ConversionsManyPerClick, ConversionValue '+
+    'Cost, Amount, ConvertedClicks, Conversions, ConversionValue '+
     'FROM CAMPAIGN_PERFORMANCE_REPORT ' +
     'WHERE Cost > 0 ' + // this filter is here just to prevent zeroes from showing and eating up the 10k row limit
     'DURING LAST_30_DAYS');
